@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-app-mode="lite">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="The lightweight browser version of Rushabh Workday.">
+  <title>Rushabh · Workday Lite</title>
+  
+  <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar glass">
+      <a class="brand" href="#dashboard" aria-label="Rushabh Workday home">
+        <span class="brand-mark"><img src="assets/app-icon.svg" alt=""></span>
+        <span><strong>rushabh</strong><small>WORKDAY</small></span>
+      </a>
+      <div class="side-caption">WORKSPACE</div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">◫</span>Overview</button>
+        <button class="nav-item" data-view="attendance"><span class="nav-icon">◷</span>Attendance</button>
+        <button class="nav-item" data-view="reports"><span class="nav-icon">▤</span>Daily report</button>
+        <button class="nav-item" data-view="history"><span class="nav-icon">⌁</span>My activity</button>
+      </nav>
+      <div class="side-spacer"></div>
+      <div class="sidebar-note"><span class="pulse"></span><span><b>Lite workspace</b><small>Works without a server</small></span></div>
+      <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+      <div class="side-footer">RUSHABH ENTERPRISE <span>·</span> IST</div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark"><img src="assets/app-icon.svg" alt=""></span><strong>rushabh</strong></div>
+        <div class="breadcrumbs"><span>Workspace</span><i>/</i><b id="crumb-title">Overview</b></div>
+        <div class="top-actions"><span class="local-badge"><span class="pulse"></span><span id="mode-label">ON THIS DEVICE</span></span><button class="avatar" id="avatar" aria-label="Open settings">R</button></div>
+      </header>
+
+      <div class="content-wrap">
+        <section class="view active" id="view-dashboard">
+          <div class="welcome-row"><div><div class="eyebrow"><span id="today-weekday"></span> · <span id="today-date"></span></div><h1>Make today <span class="gradient-text">count.</span></h1><p class="subhead">A clear view of your workday, all in one place.</p></div><button class="button button-glass" data-action="new-report"><span>＋</span> New daily report</button></div>
+          <div class="hero-card glass">
+            <div class="hero-copy"><span class="hero-kicker"><span class="sun-dot"></span> YOUR WORKDAY</span><h2 id="greeting">Good day.</h2><p id="hero-message">Start with attendance, then capture what you get done.</p><button class="button button-primary" data-view="attendance">Open attendance <span>↗</span></button></div>
+            <div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orb-core"><span>✦</span></div><div class="spark spark-a">✦</div><div class="spark spark-b">✧</div><div class="spark spark-c">·</div></div>
+            <div class="hero-foot"><span>✧</span> Your activity is saved on this device</div>
+          </div>
+          <div class="section-heading"><div><h2>Today at a glance</h2><p>Your entries for this workday</p></div><button class="text-button" data-view="history">View activity <span>→</span></button></div>
+          <div class="stats-grid">
+            <article class="stat-card glass"><div class="stat-top"><span>Attendance</span><span class="stat-icon indigo">◷</span></div><strong id="stat-attendance">Not started</strong><small id="stat-attendance-note">No check-in recorded</small><div class="stat-bottom"><span class="mini-line indigo-line"></span><span>Today</span></div></article>
+            <article class="stat-card glass"><div class="stat-top"><span>Daily reports</span><span class="stat-icon mint">▤</span></div><strong id="stat-reports">0</strong><small>Reports saved today</small><div class="stat-bottom"><span class="mini-line mint-line"></span><span>Today</span></div></article>
+            <article class="stat-card glass"><div class="stat-top"><span>Hours logged</span><span class="stat-icon gold">◴</span></div><strong id="stat-hours">0.0 <em>hrs</em></strong><small>From your daily reports</small><div class="stat-bottom"><span class="mini-line gold-line"></span><span>Today</span></div></article>
+            <article class="stat-card glass"><div class="stat-top"><span>Next step</span><span class="stat-icon rose">✧</span></div><strong class="stat-word" id="stat-next">Add a plan</strong><small>Keep tomorrow in view</small><div class="stat-bottom"><span class="mini-line rose-line"></span><button class="tiny-link" data-action="new-report">Add plan ↗</button></div></article>
+          </div>
+          <div class="lower-grid">
+            <article class="panel glass activity-panel"><div class="panel-heading"><div><h3>Recent activity</h3><p>Your latest updates</p></div><span class="panel-menu">•••</span></div><div id="recent-activity" class="activity-list"></div></article>
+            <article class="panel glass focus-panel"><div class="panel-heading"><div><h3>Today's focus</h3><p>A small step forward</p></div><span class="focus-star">✧</span></div><div class="focus-ring"><div><strong id="focus-count">0</strong><small>entries</small></div></div><p class="focus-note" id="focus-note">Your progress will appear here as you record your day.</p><button class="text-button" data-action="new-report">Write a report <span>→</span></button></article>
+          </div>
+          <footer class="content-footer"><span>Light on infrastructure. Focused on your work.</span><span>RUSHABH ENTERPRISE <i>·</i> <span id="footer-year"></span></span></footer>
+        </section>
+
+        <section class="view" id="view-attendance">
+          <div class="page-title"><div class="eyebrow">YOUR WORKDAY</div><h1>Attendance</h1><p class="subhead">Record your arrival and wrap-up. Location is requested only when you choose to check in or out.</p></div>
+          <div class="attendance-layout"><article class="attendance-card glass"><div class="attendance-status"><span class="status-icon">◷</span><div><small>LOCAL ATTENDANCE</small><strong id="attendance-state">Not started</strong></div><span class="status-chip">DEVICE ONLY</span></div><div class="time-display"><strong id="live-clock">--:--</strong><span>IST · <span id="attendance-day"></span></span></div><div class="attendance-divider"></div><div class="punch-row"><div><span class="punch-marker in-marker"></span><span>Check in</span><b id="checkin-time">—</b></div><div><span class="punch-marker out-marker"></span><span>Check out</span><b id="checkout-time">—</b></div></div><button id="checkin-button" class="button button-primary wide">Check in <span>↗</span></button><button id="checkout-button" class="button button-glass wide" disabled>Check out <span>↗</span></button><p class="fine-print">This lightweight version stores a personal log on this device. It does not submit official attendance to your company system.</p></article>
+            <article class="panel glass location-panel"><div class="panel-heading"><div><h3>Location check</h3><p>Browser location · no extra hardware</p></div><span class="stat-icon mint">⌖</span></div><div class="location-visual"><div class="location-wave wave-one"></div><div class="location-wave wave-two"></div><div class="location-pin">⌖</div></div><div class="location-result" id="location-result"><b>Ready when you are</b><span>Your browser will ask for location after you tap a punch button.</span></div><div class="privacy-line"><span>◈</span> Location stays on this device in lite mode.</div></article></div>
+        </section>
+
+        <section class="view" id="view-reports">
+          <div class="page-title"><div class="eyebrow">CAPTURE THE DAY</div><h1>Daily report</h1><p class="subhead">Keep a useful record of work completed, what is blocked, and what comes next.</p></div>
+          <div class="report-layout"><form id="report-form" class="panel glass report-form"><div class="form-top"><div><span class="step-label">WORK LOG <i>·</i> SAVED LOCALLY</span><h2>What moved today?</h2><p>Short and clear is perfect.</p></div><span class="form-mark">✧</span></div><div class="field-grid"><label class="field">Work date<input id="report-date" name="date" type="date" required></label><label class="field">Hours worked<input id="report-hours" name="hours" type="number" min="0" max="24" step="0.5" placeholder="e.g. 8" required></label></div><label class="field">Work location<select id="report-location" name="location"><option>Office</option><option>Site</option><option>Client visit</option><option>Work from home</option><option>Field work</option><option>Other</option></select></label><label class="field">Work completed<textarea id="report-work" name="work" rows="3" maxlength="1200" placeholder="What did you work on or finish?" required></textarea></label><div class="field-grid"><label class="field">Progress<select id="report-status" name="status"><option>Completed</option><option>In progress</option><option>Blocked</option><option>Pending</option></select></label><label class="field">Client / site<input id="report-client" name="client" maxlength="160" placeholder="Optional"></label></div><label class="field">Pending work or help needed<textarea id="report-pending" name="pending" rows="2" maxlength="600" placeholder="Anything waiting on a person, part, or decision?"></textarea></label><label class="field">Plan for tomorrow<textarea id="report-plan" name="plan" rows="2" maxlength="600" placeholder="What is the next useful step?"></textarea></label><div class="form-actions"><span id="form-message" class="form-message">Private to this device</span><button class="button button-primary" type="submit">Save report <span>↗</span></button></div></form><aside class="report-aside"><article class="panel glass gentle-card"><span class="gentle-icon">✦</span><h3>Make it actionable</h3><p>A good update says what changed, what is stuck, and who or what can move it forward.</p></article><article class="panel glass"><div class="panel-heading"><div><h3>Saved today</h3><p id="saved-report-count">0 reports</p></div><span class="stat-icon indigo">▤</span></div><div id="saved-report-list" class="saved-report-list"></div></article></aside></div>
+        </section>
+
+        <section class="view" id="view-history">
+          <div class="page-title"><div class="eyebrow">YOUR DEVICE LOG</div><h1>My activity</h1><p class="subhead">Attendance punches and daily reports saved in this browser.</p></div>
+          <article class="panel glass history-panel"><div class="panel-heading"><div><h3>Activity log</h3><p id="history-summary">No activity yet</p></div><button class="button button-glass button-small" id="export-button">Export my data <span>↓</span></button></div><div id="history-list" class="history-list"></div></article>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="page-title"><div class="eyebrow">MAKE IT YOURS</div><h1>Settings</h1><p class="subhead">Set up this device's personal workspace. No account or server is required.</p></div>
+          <div class="settings-grid"><article class="panel glass settings-panel"><div class="panel-heading"><div><h3>Your profile</h3><p>Used to personalize this device only</p></div><span class="stat-icon indigo">◎</span></div><label class="field">Display name<input id="profile-name" maxlength="80" placeholder="Your name"></label><label class="field">Workplace name<input id="workplace-name" maxlength="100" placeholder="Rushabh Enterprise"></label><button class="button button-primary" id="save-settings">Save settings <span>↗</span></button></article><article class="panel glass settings-panel"><div class="panel-heading"><div><h3>Optional geofence</h3><p>For a local proximity check only</p></div><span class="stat-icon mint">⌖</span></div><label class="field">Office latitude<input id="office-latitude" type="number" step="any" min="-90" max="90" placeholder="e.g. 22.4"></label><label class="field">Office longitude<input id="office-longitude" type="number" step="any" min="-180" max="180" placeholder="e.g. 72.8"></label><label class="field">Allowed radius (metres)<input id="geofence-radius" type="number" min="20" max="2000" step="10" placeholder="150"></label><p class="fine-print">Coordinates remain on this device. A browser geofence is a convenience check, not tamper-proof attendance.</p></article><article class="panel glass settings-panel"><div class="panel-heading"><div><h3>Data & privacy</h3><p>Offline-first by default</p></div><span class="stat-icon mint">◈</span></div><div class="setting-info"><b>Saved on this device</b><span>Reports and attendance entries use this browser's local storage. They do not sync between devices or reach your manager.</span></div><button class="button button-glass wide" id="download-backup">Download a local backup <span>↓</span></button><button class="danger-button" id="clear-data">Clear this device's data</button></article><article class="panel glass settings-panel"><div class="panel-heading"><div><h3>Installable PWA</h3><p>Works offline after installation</p></div><span class="stat-icon gold">✦</span></div><div class="setting-info"><b>No paid server or special hardware</b><span>Host the static files on any HTTPS static host. Browser GPS works on supported phones; this app cannot guarantee anti-spoofing.</span></div><a class="text-button" href="lite.html">Open the lite version <span>→</span></a></article></div>
+        </section>
+      </div>
+
+      <nav class="mobile-nav" aria-label="Mobile navigation"><button class="mobile-nav-item active" data-view="dashboard"><span>◫</span><small>Home</small></button><button class="mobile-nav-item" data-view="attendance"><span>◷</span><small>Attend</small></button><button class="mobile-nav-item" data-view="reports"><span>▤</span><small>Report</small></button><button class="mobile-nav-item" data-view="history"><span>⌁</span><small>Activity</small></button><button class="mobile-nav-item" data-view="settings"><span>⚙</span><small>Settings</small></button></nav>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
