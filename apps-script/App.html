@@ -1,0 +1,75 @@
+<!doctype html><html><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101725"><style><?!= include_('Styles'); ?></style></head>
+<body><div class="ambient a"></div><div class="ambient b"></div>
+<main class="shell">
+  <header class="top"><div class="brand"><div class="mark">R</div><div><strong>RUSHHABH</strong><span>WORKDAY</span></div></div><div id="headRight"></div></header>
+  <section id="login" class="login glass"><div class="eyebrow">FIELD TEAM · DAILY OPERATIONS</div><h1>Work, clearly<br><em>accounted for.</em></h1><p>Sign in with your registered work email to record attendance and share daily progress.</p><label>Work email <input id="email" type="email" autocomplete="email" placeholder="name@company.com"></label><div id="otpWrap" class="hidden"><label>6 digit code <input id="otp" inputmode="numeric" maxlength="6" placeholder="Enter the code"></label></div><button id="loginBtn" class="primary">Send sign-in code <span>↗</span></button><div id="loginMsg" class="note"></div><small>Your location is requested only when you tap Check in or Check out.</small></section>
+  <section id="workspace" class="hidden">
+    <div class="welcome glass"><div><div class="eyebrow" id="roleLabel">TODAY</div><h1>Good work,<br><em id="nameLabel">there.</em></h1><p id="dateLabel"></p></div><div class="welcomeOrb">✳</div></div>
+    <nav class="tabs"><button class="tab active" data-view="home">My day</button><button class="tab" data-view="schedule">My schedule</button><button class="tab" data-view="tasks">My tasks</button><button class="tab" data-view="requests">Requests</button><button class="tab" data-view="report">Progress report</button><button id="managerTab" class="tab hidden" data-view="manager">Team view</button><button class="tab logout" id="logout">Sign out</button></nav>
+    <section id="homeView" class="view">
+      <div class="sectionHead"><div><div class="eyebrow">ATTENDANCE</div><h2>Today’s time</h2></div><span id="attendanceState" class="pill">Not checked in</span></div>
+      <div class="punchGrid"><article class="glass punch"><div class="punchIcon">↘</div><h3>Check in</h3><p>On-site location is checked when you record attendance.</p><button id="inBtn" class="primary">Check in <span>↗</span></button><div id="inTime" class="time"></div></article><article class="glass punch"><div class="punchIcon">↗</div><h3>Check out</h3><p>Finish your day with a server-timestamped check-out.</p><button id="outBtn" class="secondary">Check out <span>↗</span></button><div id="outTime" class="time"></div></article></div>
+      <div class="sectionHead"><div><div class="eyebrow">RECENT ACTIVITY</div><h2>Your records</h2></div></div><div id="myRecords" class="recordList"></div>
+    </section>
+    <section id="scheduleView" class="view hidden"><div class="sectionHead"><div><div class="eyebrow">UPCOMING SHIFTS</div><h2>My schedule</h2></div><button id="refreshMySchedule" class="secondary">Refresh</button></div><div id="mySchedule" class="recordList"><article class="record"><span>Loading schedule…</span></article></div></section>
+    <section id="tasksView" class="view hidden"><div class="sectionHead"><div><div class="eyebrow">ASSIGNED WORK</div><h2>My tasks</h2></div><button id="refreshMyTasks" class="secondary">Refresh</button></div><div id="myTasks" class="recordList"></div></section>
+    <section id="requestsView" class="view hidden"><div class="sectionHead"><div><div class="eyebrow">TIME OFF · SHIFT CHANGES</div><h2>Requests</h2></div></div><form id="requestForm" class="glass form"><label>Request type<select name="type" id="requestType"><option>Leave</option><option>Shift change</option></select></label><div class="formRow"><label>Start date<input name="startDate" type="date" required></label><label>End date<input name="endDate" type="date" required></label></div><div id="proposedTimes" class="formRow hidden"><label>Proposed start<input name="proposedStart" type="time"></label><label>Proposed end<input name="proposedEnd" type="time"></label></div><label>Reason / details<textarea name="reason" maxlength="700" required></textarea></label><button class="primary">Submit request <span>↗</span></button><div id="requestMsg" class="note"></div></form><div class="sectionHead"><div><div class="eyebrow">MY REQUESTS</div><h2>Request status</h2></div><button id="refreshMyRequests" class="secondary">Refresh</button></div><div id="myRequests" class="recordList"></div></section>
+    <section id="reportView" class="view hidden"><div class="sectionHead"><div><div class="eyebrow">END OF DAY</div><h2>Progress report</h2></div></div><form id="reportForm" class="glass form"><label>Project / client<input name="project" maxlength="160" placeholder="Project or customer"></label><label>What did you work on?<textarea name="summary" maxlength="1200" required placeholder="Key tasks, results, or milestones"></textarea></label><div class="formRow"><label>Status<select name="status"><option>In progress</option><option>Completed</option><option>Blocked</option></select></label><label>Hours<input name="hours" type="number" min="0" max="24" step="0.25" value="8"></label></div><label>Blockers<textarea name="blockers" maxlength="600" placeholder="Anything delaying progress?"></textarea></label><label>Support needed<textarea name="support" maxlength="600" placeholder="What would help?"></textarea></label><label>Plan for next workday<textarea name="nextPlan" maxlength="600" placeholder="Next steps"></textarea></label><button class="primary">Save progress <span>↗</span></button><div id="reportMsg" class="note"></div></form><div class="sectionHead"><div><div class="eyebrow">SUBMITTED</div><h2>Recent reports</h2></div></div><div id="myProgress" class="recordList"></div></section>
+    <section id="managerView" class="view hidden"><div class="sectionHead"><div><div class="eyebrow">MANAGER WORKSPACE</div><h2>Team dashboard</h2></div><button id="refreshDashboard" class="secondary">Refresh</button></div><div id="dashDate" class="note"></div><div class="statsGrid"><article class="glass stat"><span>TEAM MEMBERS</span><strong id="statTeam">—</strong></article><article class="glass stat"><span>CHECKED IN</span><strong id="statIn">—</strong></article><article class="glass stat"><span>REPORTS IN</span><strong id="statReports">—</strong></article><article class="glass stat"><span>BLOCKED</span><strong id="statBlocked">—</strong></article><article class="glass stat"><span>OPEN TASKS</span><strong id="statTasksOpen">—</strong></article><article class="glass stat"><span>OVERDUE TASKS</span><strong id="statTasksOverdue">—</strong></article></div><div class="sectionHead"><div><div class="eyebrow">TASK MANAGEMENT</div><h2>Assign a task / target</h2></div><button id="refreshTasks" class="secondary">Refresh</button></div><form id="taskForm" class="glass form"><label>Employee<select name="employeeId" id="taskEmployee" required><option value="">Select employee…</option></select></label><label>Task / target<input name="title" maxlength="180" required></label><label>Details<textarea name="details" maxlength="800"></textarea></label><div class="formRow"><label>Due date<input name="dueDate" id="taskDueDate" type="date" required></label><label>Priority<select name="priority"><option>Normal</option><option>Low</option><option>High</option><option>Urgent</option></select></label></div><button class="primary">Assign task <span>↗</span></button><div id="taskMsg" class="note"></div></form><div id="managerTasks" class="recordList"></div>
+<div class="sectionHead"><div><div class="eyebrow">WEEKLY TEAM REPORT</div><h2>Last 7 days</h2></div><button id="loadWeeklyReport" class="secondary">Refresh report</button></div><div id="weeklySummary" class="glass summary">Load report to see team totals.</div><div id="weeklyPeople" class="recordList"></div>
+<div class="sectionHead"><div><div class="eyebrow">APPROVALS</div><h2>Pending leave and shift requests</h2></div><button id="refreshRequests" class="secondary">Refresh</button></div><div id="managerRequests" class="recordList"></div>
+<div class="sectionHead"><div><div class="eyebrow">EMAIL DIGESTS</div><h2>Manager summaries</h2></div></div><div class="glass form"><p>Enable a daily 6 PM summary of scheduled employees missing check-in or progress plus overdue tasks, and a Monday 8 AM weekly team report. Uses the Apps Script owner’s email quota.</p><button type="button" id="enableDigests" class="secondary">Enable email digests</button><div id="digestMsg" class="note"></div></div><div class="sectionHead"><div><div class="eyebrow">TODAY</div><h2>Attendance and updates</h2></div></div><div id="teamDashboard" class="recordList"></div><div class="sectionHead"><div><div class="eyebrow">SHIFT PLANNING</div><h2>Assign a schedule</h2></div></div><form id="managerScheduleForm" class="glass form"><label>Employee<select name="employeeId" id="scheduleEmployee" required><option value="">Select employee…</option></select></label><div class="formRow"><label>Work date<input name="workDate" id="scheduleDate" type="date" required></label><label>Starts<input name="startTime" type="time" required></label></div><div class="formRow"><label>Ends<input name="endTime" type="time" required></label><label>Location<input name="location" maxlength="180" placeholder="Site or office"></label></div><label>Shift / assignment<input name="assignment" maxlength="180" required placeholder="Role, project, or shift"></label><label>Instructions<textarea name="instructions" maxlength="800" placeholder="Notes for the employee"></textarea></label><button class="primary">Save schedule <span>↗</span></button><div id="scheduleMsg" class="note"></div></form><div class="sectionHead"><div><div class="eyebrow">PLANNED</div><h2>Team schedules</h2></div><button id="refreshTeamSchedules" class="secondary">Refresh</button></div><div id="teamSchedules" class="recordList"></div><div class="sectionHead"><div><div class="eyebrow">EMPLOYEE HISTORY</div><h2>Full details</h2></div></div><div class="glass managerPick"><label>Choose employee<select id="employeeSelect"><option value="">Select a person…</option></select></label><div class="formRow"><label>From<input id="fromDate" type="date"></label><label>To<input id="toDate" type="date"></label></div><button id="loadEmployee" class="primary">View details <span>↗</span></button><div id="managerMsg" class="note"></div></div><div id="employeeDetail" class="hidden"><div id="employeeSummary" class="glass summary"></div><div class="sectionHead"><div><div class="eyebrow">ATTENDANCE</div><h2>Time records</h2></div></div><div id="teamAttendance" class="recordList"></div><div class="sectionHead"><div><div class="eyebrow">DAILY UPDATES</div><h2>Progress reports</h2></div></div><div id="teamProgress" class="recordList"></div></div></section>
+  </section>
+  <footer>RUSHHABH WORKDAY <span>LIGHTWEIGHT · SHEET CONNECTED</span></footer>
+</main><div id="toast" class="toast"></div><?!= include_('Client'); ?></body></html>
+
+<script>
+(() => {
+  const manager = document.getElementById('managerView');
+  if (!manager || document.getElementById('geofenceAdmin')) return;
+  const panel = document.createElement('section');
+  panel.id = 'geofenceAdmin'; panel.className = 'glass form';
+  panel.innerHTML = '<div class="sectionHead"><div><div class="eyebrow">OFFICE SETUP</div><h2>Attendance fence</h2></div></div>' +
+    '<p>Use this phone at the office to capture its point, or enter coordinates manually. Changes apply to the next check-in/out.</p>' +
+    '<div class="formRow"><label>Latitude<input id="officeLat" type="number" step="any" min="-90" max="90" required></label><label>Longitude<input id="officeLon" type="number" step="any" min="-180" max="180" required></label></div>' +
+    '<label>Allowed radius (metres)<input id="fenceRadius" type="number" min="10" max="10000" step="1" required></label>' +
+    '<div class="formRow"><button type="button" id="captureOfficeGps" class="secondary">Use this phone GPS</button><button type="button" id="saveOfficeFence" class="primary">Save fence <span>↗</span></button></div>' +
+    '<div id="fenceStatus" class="note" role="status"></div>' +
+    '<small>Location is read only after you tap the GPS button. This fence checks attendance punches; it does not track staff in the background or send arrival/exit alerts.</small>';
+  manager.insertBefore(panel, manager.querySelector('.managerPick'));
+  const status = text => { document.getElementById('fenceStatus').textContent = text || ''; };
+  async function loadFence() {
+    try {
+      const g = await rpc('appManagerGetGeofence', token);
+      document.getElementById('officeLat').value = g.latitude;
+      document.getElementById('officeLon').value = g.longitude;
+      document.getElementById('fenceRadius').value = g.radiusMeters || 150;
+      status('Current fence loaded. Location accuracy limit: ' + g.maxAccuracyMeters + ' m.');
+    } catch (e) { status(e.message || 'Could not load the current fence.'); }
+  }
+  document.getElementById('managerTab')?.addEventListener('click', loadFence);
+  document.getElementById('captureOfficeGps').onclick = () => {
+    status('Getting this device’s location…');
+    if (!navigator.geolocation) { status('GPS is unavailable in this browser. Enter coordinates manually.'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('officeLat').value = pos.coords.latitude.toFixed(7);
+      document.getElementById('officeLon').value = pos.coords.longitude.toFixed(7);
+      status('GPS captured; accuracy ±' + Math.round(pos.coords.accuracy) + ' m. Review the pin, then save.');
+    }, err => status('GPS unavailable (' + (err.message || 'permission denied') + '). Enter coordinates manually.'),
+    {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+  };
+  document.getElementById('saveOfficeFence').onclick = async event => {
+    const button = event.currentTarget; button.disabled = true;
+    try {
+      const saved = await rpc('appManagerSetGeofence', token, {
+        latitude: document.getElementById('officeLat').value,
+        longitude: document.getElementById('officeLon').value,
+        radiusMeters: document.getElementById('fenceRadius').value
+      });
+      document.getElementById('fenceRadius').value = saved.radiusMeters;
+      status('Saved. New check-ins and check-outs now use this fence.');
+    } catch (e) { status(e.message || 'Could not save the attendance fence.'); }
+    finally { button.disabled = false; }
+  };
+})();
+</script>
