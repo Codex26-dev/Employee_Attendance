@@ -2,7 +2,7 @@
   "id": "./connected.html",
   "name": "Rushabh Workday",
   "short_name": "Rushabh",
-  "description": "A lightweight app launcher for the private, Google Sheets connected Rushabh Workday workspace.",
+  "description": "A lightweight app launcher for the admin-approved, Google Sheets connected Rushabh Workday workspace.",
   "start_url": "./connected.html",
   "scope": "./",
   "display": "standalone",
