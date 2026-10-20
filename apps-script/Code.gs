@@ -158,11 +158,24 @@ function appSaveAmcReport(token,payload) {
     const json=JSON.stringify({checks:checks,ipv4:cleanText_(data.ipv4,80),hostAddress:cleanText_(data.hostAddress,120),dataStatus:cleanText_(data.dataStatus,200),newEnrollment:cleanText_(data.newEnrollment,1000),issues:cleanText_(data.issues,1000),miscellaneous:cleanText_(data.miscellaneous,1000),nextMaterial:cleanText_(data.nextMaterial,1000),managerName:cleanText_(data.managerName,120)});
     sheet.appendRow([reportId,e.id,e.name,now,branch,code,customer,contact,visit,product,address,json,engineerFile.getId(),managerFile?managerFile.getId():'',stampFile.getId(),pdfFile.getId(),pdfFile.getName(),lat,lon,accuracy]);
     return {ok:true,reportId:reportId,fileName:pdfFile.getName(),pdfBase64:Utilities.base64Encode(pdfFile.getBlob().getBytes())};
-  } catch(err) { if(docFile)try{docFile.setTrashed(true)}catch(_){}; throw new Error('AMC report was not completed: '+err.message); }
+  } catch(err) {
+    if(docFile)try{docFile.setTrashed(true)}catch(_){}
+    const detail=String(err&&err.message||err);
+    if(/DriveApp|DocumentApp|authorization|permission/i.test(detail))throw new Error('AMC storage needs one-time setup by the Apps Script owner. Ask the owner to open the script editor, run authorizeAmcServices, approve Drive and Docs access, then retry this report.');
+    throw new Error('AMC report was not completed: '+detail);
+  }
 }
 function appGetMyAmcReports(token) { const e=employeeForSession_(token),sh=ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH);return amcRows_(sh).filter(r=>String(r['Employee ID'])===String(e.id)).slice(-30).reverse(); }
 function appManagerAmcReports(token) { const e=employeeForSession_(token);requireManager_(e);return amcRows_(ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH)).slice(-300).reverse(); }
 function appGetAmcPdf(token,reportId) { const e=employeeForSession_(token),rows=amcRows_(ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH)),r=rows.find(x=>String(x['Report ID'])===String(reportId));if(!r)throw new Error('AMC report not found.');if(String(r['Employee ID'])!==String(e.id))requireManager_(e);const file=DriveApp.getFileById(String(r['PDF File ID']));return {fileName:file.getName(),pdfBase64:Utilities.base64Encode(file.getBlob().getBytes())}; }
+// Run this once in the Apps Script editor as the deploying account after adding
+// the Drive and Docs scopes, then approve the Google consent screen.
+function authorizeAmcServices() {
+  const folder=amcFolder_();
+  const temporaryDoc=DocumentApp.create('Rushabh Workday AMC authorization check');
+  DriveApp.getFileById(temporaryDoc.getId()).setTrashed(true);
+  return 'AMC Drive folder is ready: '+folder.getName()+'. Drive and Docs authorization completed.';
+}
 function amcRows_(sheet) { const v=sheet.getDataRange().getValues();if(v.length<2)return [];const h=v[0].map(String);return v.slice(1).filter(r=>r[0]).map(r=>{const o={};h.forEach((k,i)=>o[k]=r[i] instanceof Date?Utilities.formatDate(r[i],spreadsheet_().getSpreadsheetTimeZone(),'yyyy-MM-dd HH:mm:ss'):r[i]);return o;}); }
 function amcImageBlob_(data,name,required) { if(!data){if(required)throw new Error('Add the required signature and branch stamp photo.');return null;}const m=String(data).match(/^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/);if(!m)throw new Error('Signature and stamp must be PNG or JPEG images.');return Utilities.newBlob(Utilities.base64Decode(m[2]),m[1],name); }
 function amcFolder_() { const p=PropertiesService.getScriptProperties(),key='AMC_REPORT_FOLDER_ID',id=p.getProperty(key);if(id){try{return DriveApp.getFolderById(id)}catch(_){}}const f=DriveApp.createFolder('Rushabh Workday AMC Reports');p.setProperty(key,f.getId());return f; }
