@@ -1,13 +1,14 @@
 /**
  * Rushabh Workday connected app (Google Apps Script HtmlService).
  * Deploy as a web app after setting Script Properties; see SETUP.md.
- * This app only creates/writes App_Attendance and App_Progress.
+ * This app writes attendance, progress and AMC reports; generated PDFs stay in the owner's Drive.
  */
 const APP = Object.freeze({
-  SPREADSHEET_ID: '',
+  SPREADSHEET_ID: '1zW9QBt-rPkUYZyoKpkfUQbkAn7aBL1nAmIgUHg_Z4Z0',
   ATTENDANCE: 'App_Attendance', PROGRESS: 'App_Progress',
   AH: ['Record ID','Employee ID','Employee Name','Mobile','Event','Server Timestamp','Work Date','Latitude','Longitude','Accuracy M','Office Distance M','Geofence Result'],
-  PH: ['Record ID','Employee ID','Employee Name','Server Timestamp','Work Date','Project / Client','Work Summary','Status','Hours','Blockers','Support Needed','Next Day Plan']
+  PH: ['Record ID','Employee ID','Employee Name','Server Timestamp','Work Date','Project / Client','Work Summary','Status','Hours','Blockers','Support Needed','Next Day Plan'],
+  AMC: 'AMC_Reports', AMCH: ['Report ID','Employee ID','Employee Name','Server Timestamp','Branch Name','Branch Code','Customer Name','Contact','AMC Visit','Product','Site Address','Report Data JSON','Engineer Signature File ID','Manager Signature File ID','Stamp Photo File ID','PDF File ID','PDF File Name','Latitude','Longitude','Accuracy M']
 });
 
 function doGet() {
@@ -20,7 +21,8 @@ function setupConnectedAppSheets() {
   const ss = spreadsheet_();
   ensureTab_(ss, APP.ATTENDANCE, APP.AH);
   ensureTab_(ss, APP.PROGRESS, APP.PH);
-  return 'Ready: App_Attendance and App_Progress are present.';
+  ensureTab_(ss, APP.AMC, APP.AMCH);
+  return 'Ready: App_Attendance, App_Progress and AMC_Reports are present.';
 }
 
 function appRequestOtp(email) {
@@ -49,10 +51,11 @@ function appVerifyOtp(email, otp) {
   if (!employee) throw new Error('This employee account is not active.');
   const token = Utilities.getUuid() + Utilities.getUuid();
   recordAppSession_(token,address);
+  try{auditActivity_(address,'SIGN_IN')}catch(_){}
   return {token:token,profile:publicProfile_(employee)};
 }
 
-function appLogout(token) { revokeAppSession_(token); return {ok:true}; }
+function appLogout(token) { const email=employeeForSession_(token).email; try{auditActivity_(email,'SIGN_OUT')}catch(_){} revokeAppSession_(token); return {ok:true}; }
 function appGetContext(token) { const e = employeeForSession_(token); return {profile:publicProfile_(e),manager:isManager_(e),settings:clientSettings_()}; }
 function appGetMyData(token) {
   const e = employeeForSession_(token), ss = spreadsheet_(), tz = ss.getSpreadsheetTimeZone();
@@ -64,16 +67,21 @@ function appPunch(token, event, lat, lon, accuracy) {
   const e = employeeForSession_(token), kind = String(event || '').toUpperCase();
   if (!['CHECK_IN','CHECK_OUT'].includes(kind)) throw new Error('Unknown attendance action.');
   const p = PropertiesService.getScriptProperties();
-  const officeLat = requiredNumber_(p.getProperty('OFFICE_LATITUDE'),'OFFICE_LATITUDE');
-  const officeLon = requiredNumber_(p.getProperty('OFFICE_LONGITUDE'),'OFFICE_LONGITUDE');
-  const radius = requiredNumber_(p.getProperty('GEOFENCE_RADIUS_METERS'),'GEOFENCE_RADIUS_METERS');
   const maxAccuracy = Number(p.getProperty('MAX_LOCATION_ACCURACY_METERS') || 100);
-  const la = requiredNumber_(lat,'latitude'), lo = requiredNumber_(lon,'longitude'), acc = requiredNumber_(accuracy,'accuracy');
-  if (la < -90 || la > 90 || lo < -180 || lo > 180) throw new Error('Location reading is invalid.');
-  if (acc > maxAccuracy) throw new Error('Location accuracy is too low. Try again outdoors.');
-  const dist = Math.round(distanceMeters_(officeLat,officeLon,la,lo));
-  if (dist > radius) throw new Error('You are outside the attendance area (' + dist + ' m away).');
-  enforcePunchWindow_(kind,p);
+  const hasLocation = lat !== '' && lat !== null && lat !== undefined && lon !== '' && lon !== null && lon !== undefined;
+  let la='',lo='',acc='',dist='',geofence='NOT PROVIDED';
+  if (hasLocation) {
+    la=Number(lat); lo=Number(lon); acc=Number(accuracy);
+    if (!Number.isFinite(la)||!Number.isFinite(lo)||la < -90||la > 90||lo < -180||lo > 180) throw new Error('Location reading is invalid. Retry without location or try again.');
+    const officeLat=Number(p.getProperty('OFFICE_LATITUDE')),officeLon=Number(p.getProperty('OFFICE_LONGITUDE')),radius=Number(p.getProperty('GEOFENCE_RADIUS_METERS'));
+    if (Number.isFinite(acc)&&acc>=0) {
+      if (Number.isFinite(officeLat)&&Number.isFinite(officeLon)&&Number.isFinite(radius)) {
+        dist=Math.round(distanceMeters_(officeLat,officeLon,la,lo));
+        geofence=acc<=maxAccuracy?(dist<=radius?'INSIDE':'OUTSIDE'):'UNVERIFIED · LOW ACCURACY';
+      } else geofence=acc<=maxAccuracy?'LOCATION RECORDED · FENCE NOT SET':'UNVERIFIED · LOW ACCURACY';
+    } else { acc=''; geofence='UNVERIFIED · ACCURACY MISSING'; }
+  }
+  if (kind === 'CHECK_IN') enforcePunchWindow_(kind,p);
   const ss = spreadsheet_(), sheet = ensureTab_(ss,APP.ATTENDANCE,APP.AH), now = new Date();
   const tz = ss.getSpreadsheetTimeZone(), workDate = Utilities.formatDate(now,tz,'yyyy-MM-dd');
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
@@ -81,8 +89,22 @@ function appPunch(token, event, lat, lon, accuracy) {
     const existing = recordsForDate_(sheet,e.id,workDate);
     if (kind === 'CHECK_IN' && existing.some(r => r.Event === 'CHECK_IN')) throw new Error('Check-in is already recorded for today.');
     if (kind === 'CHECK_OUT' && (!existing.some(r => r.Event === 'CHECK_IN') || existing.some(r => r.Event === 'CHECK_OUT'))) throw new Error('Check-in is required and check-out can be recorded once.');
-    sheet.appendRow([Utilities.getUuid(),e.id,e.name,e.mobile,kind,now,workDate,la,lo,Math.round(acc),dist,'INSIDE']);
+    sheet.appendRow([Utilities.getUuid(),e.id,e.name,e.mobile,kind,now,workDate,la,lo,acc===''?'':Math.round(acc),dist,geofence]);
   } finally { lock.releaseLock(); }
+  return appGetMyData(token);
+}
+
+function appSaveDailyReportAndCheckout(token,payload,lat,lon,accuracy) {
+  const e=employeeForSession_(token),x=payload||{},summary=cleanText_(x.summary,1200),project=cleanText_(x.project,160),status=cleanText_(x.status,40);
+  if(!summary||!['Completed','In progress','Blocked'].includes(status)) throw new Error('Add a work summary and choose a valid status.');
+  const hours=Number(x.hours||0); if(!Number.isFinite(hours)||hours<0||hours>24) throw new Error('Hours must be between 0 and 24.');
+  const ss=spreadsheet_(),tz=ss.getSpreadsheetTimeZone(),now=new Date(),workDate=Utilities.formatDate(now,tz,'yyyy-MM-dd');
+  const progress=ensureTab_(ss,APP.PROGRESS,APP.PH),attendance=ensureTab_(ss,APP.ATTENDANCE,APP.AH),p=PropertiesService.getScriptProperties();
+  const hasLocation=lat!==''&&lat!==null&&lat!==undefined&&lon!==''&&lon!==null&&lon!==undefined;
+  let la='',lo='',acc='',dist='',geofence='NOT PROVIDED';
+  if(hasLocation){la=Number(lat);lo=Number(lon);acc=Number(accuracy);if(!Number.isFinite(la)||!Number.isFinite(lo)||la < -90||la > 90||lo < -180||lo > 180)throw new Error('Location reading is invalid. Retry without location or try again.');const officeLat=Number(p.getProperty('OFFICE_LATITUDE')),officeLon=Number(p.getProperty('OFFICE_LONGITUDE')),radius=Number(p.getProperty('GEOFENCE_RADIUS_METERS')),maxAccuracy=Number(p.getProperty('MAX_LOCATION_ACCURACY_METERS')||100);if(Number.isFinite(acc)&&acc>=0){if(Number.isFinite(officeLat)&&Number.isFinite(officeLon)&&Number.isFinite(radius)){dist=Math.round(distanceMeters_(officeLat,officeLon,la,lo));geofence=acc<=maxAccuracy?(dist<=radius?'INSIDE':'OUTSIDE'):'UNVERIFIED · LOW ACCURACY'}else geofence=acc<=maxAccuracy?'LOCATION RECORDED · FENCE NOT SET':'UNVERIFIED · LOW ACCURACY'}else{acc='';geofence='UNVERIFIED · ACCURACY MISSING'}}
+  const lock=LockService.getScriptLock();lock.waitLock(10000);
+  try{const existing=recordsForDate_(attendance,e.id,workDate);if(!existing.some(r=>r.Event==='CHECK_IN'))throw new Error('Check in before submitting the end-of-day report.');if(existing.some(r=>r.Event==='CHECK_OUT'))throw new Error('Check-out is already recorded for today.');progress.appendRow([Utilities.getUuid(),e.id,e.name,now,workDate,project,summary,status,hours,cleanText_(x.blockers,600),cleanText_(x.support,600),cleanText_(x.nextPlan,600)]);attendance.appendRow([Utilities.getUuid(),e.id,e.name,e.mobile,'CHECK_OUT',now,workDate,la,lo,acc===''?'':Math.round(acc),dist,geofence]);}finally{lock.releaseLock()}
   return appGetMyData(token);
 }
 
@@ -96,6 +118,56 @@ function appSaveProgress(token, payload) {
   return appGetMyData(token);
 }
 
+// AMC forms are built from the uploaded two-page visit forms. Employees can create
+// reports only for their own session; managers can list and open team PDFs.
+const AMC_BRANCH_NAMES_ = ['ANAND','KHAMBHAT','UMRETH','THASRA','PETLAD','MATAR','BORSAD','KAPADVANJ','BALASINOR','MAHEMDABAD','DAKOR','ATARSUMBA','VIRPUR','ANKLAV','NAVAGAM','MAHEDAV','V V NAGAR','CHAKLASHI','TARAPUR','LIMBASI','MAHIJ','MAHUDHA','AJARPURA','ALINA','NAR','SUNAV','KHAMBHODAJ','KATHLAL','CHIKHODRA','SARSA','BHADRAN','VASAD','UNDEL','KUNJRAV','VIRSAD','HALDHARVAS','RADHU','SAMARKHA','BHALEJ','BORIAVI','NAPAD','AKLACHA','KATHANA','PALANA','NESH','ALINDRA(M)','KHEDA','JETHOLI','AMUL DAIRY','ALINDRA(N)','BAMANGAM','SEVALIYA','MODAJ','LASUNDRA','SOJITRA','ANTISAR','AASHI','VANSOL','ZAROLA','KAVITHA','CHANGA','BANDHANI','TELNAR','PIPLAV','BHARODA','NADIAD HO(OLD)','SALAIYA','ODE','CHUNEL','KARAMSAD','MOGRI','GHADIYA','GUNJ BAZAR','NENPUR CHOKDI','PANDVA','CHARUSAT','ASODAR','RATANPUR','RAS','NARSANDA','CHHIPDI','THERMAL','KUMBHARWADI','DAVOL','DABHOU','GOLANA','BALOL','SANDHELI'];
+const AMC_PRODUCTS_ = ['CCTV','Biometric System','UPS System','Computer','Printer','Digital Signage System','Home Automation','Other'];
+function appGetAmcOptions(token) {
+  const e=employeeForSession_(token);
+  return {employee:publicProfile_(e),products:AMC_PRODUCTS_,branches:AMC_BRANCH_NAMES_.map((name,i)=>({name:name,code:String(i+1)}))};
+}
+function appSaveAmcReport(token,payload) {
+  const e=employeeForSession_(token),x=payload||{},branch=cleanText_(x.branchName,100),code=cleanText_(x.branchCode,30),customer=cleanText_(x.customerName,160),contact=cleanText_(x.contact,80),product=cleanText_(x.product,60),visit=cleanText_(x.visitNumber,40),address=cleanText_(x.address,300);
+  if(!branch||!customer||!visit||!AMC_PRODUCTS_.includes(product))throw new Error('Complete customer, branch, visit number and product.');
+  const data=x.data||{},checks=Array.isArray(data.checks)?data.checks.slice(0,80).map(c=>({item:cleanText_(c.item,120),status:['OK','Needs attention','Not applicable'].includes(c.status)?c.status:'Not applicable',notes:cleanText_(c.notes,300)})):[];
+  const engineerSignature=amcImageBlob_(x.engineerSignature,'engineer-signature.png',true),managerSignature=amcImageBlob_(x.managerSignature,'branch-manager-signature.png',true),stamp=amcImageBlob_(x.stampPhoto,'branch-stamp.jpg',true);
+  const ss=spreadsheet_(),sheet=ensureTab_(ss,APP.AMC,APP.AMCH),now=new Date(),tz=ss.getSpreadsheetTimeZone(),reportId=Utilities.getUuid(),folder=amcFolder_();
+  let engineerFile,managerFile,stampFile,pdfFile,docFile;
+  try {
+    engineerFile=folder.createFile(engineerSignature);
+    if(managerSignature)managerFile=folder.createFile(managerSignature);
+    stampFile=folder.createFile(stamp);
+    const doc=DocumentApp.create('AMC '+product+' - '+branch+' - '+visit+' - '+reportId.slice(0,8));docFile=DriveApp.getFileById(doc.getId());const body=doc.getBody();
+    body.appendParagraph('RUSHABH ENTERPRISE').setHeading(DocumentApp.ParagraphHeading.TITLE);
+    body.appendParagraph(product.toUpperCase()+' ANNUAL MAINTENANCE VISIT REPORT').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    body.appendParagraph('Visit '+visit+' · '+Utilities.formatDate(now,tz,'dd MMM yyyy, hh:mm a')).setHeading(DocumentApp.ParagraphHeading.SUBTITLE);
+    body.appendTable([['Customer',customer,'Branch',branch],['Branch code',code||'—','Site address',address||'—'],['Contact',contact||'—','Engineer',e.name],['Visit number',visit,'Product',product],['Submitted',Utilities.formatDate(now,tz,'dd MMM yyyy HH:mm:ss'),'','']]);
+    body.appendParagraph('SITE INSPECTION').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    const rows=[['Inspection item','Result','Remarks']].concat(checks.map(c=>[c.item,c.status,c.notes||'—']));
+    if(data.ipv4)rows.push(['IPv4 address',cleanText_(data.ipv4,80),'']);if(data.hostAddress)rows.push(['Host address',cleanText_(data.hostAddress,120),'']);if(data.dataStatus)rows.push(['Configuration / backup data',cleanText_(data.dataStatus,200),'']);
+    body.appendTable(rows);
+    [['New employee enrolment',data.newEnrollment],['Issues found',data.issues],['Miscellaneous / new items',data.miscellaneous],['Next AMC material / suggestions',data.nextMaterial]].forEach(pair=>{body.appendParagraph(pair[0]).setHeading(DocumentApp.ParagraphHeading.HEADING2);body.appendParagraph(cleanText_(pair[1],1000)||'None reported.');});
+    body.appendParagraph('CUSTOMER ACCEPTANCE AND SIGNATURES').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph('Engineer: '+e.name);body.appendImage(engineerSignature).setWidth(170);
+    body.appendParagraph('Branch manager / customer representative: '+(cleanText_(data.managerName,120)||''));body.appendImage(managerSignature).setWidth(170);
+    body.appendParagraph('Branch stamp photo').setHeading(DocumentApp.ParagraphHeading.HEADING3);body.appendImage(stamp).setWidth(150);
+    const lat=validOptionalCoordinate_(x.latitude,-90,90),lon=validOptionalCoordinate_(x.longitude,-180,180),accuracy=validOptionalCoordinate_(x.accuracy,0,100000);
+    body.appendParagraph('Timestamp: '+Utilities.formatDate(now,tz,'yyyy-MM-dd HH:mm:ss')+' · GPS: '+(lat!==''&&lon!==''?lat+', '+lon+(accuracy!==''?' (±'+Math.round(accuracy)+' m)':''):'not provided'));
+    doc.saveAndClose();pdfFile=folder.createFile(docFile.getBlob().getAs(MimeType.PDF).setName('AMC_'+product.replace(/[^A-Za-z0-9]+/g,'_')+'_'+branch.replace(/[^A-Za-z0-9]+/g,'_')+'_'+visit+'.pdf'));
+    docFile.setTrashed(true);
+    const json=JSON.stringify({checks:checks,ipv4:cleanText_(data.ipv4,80),hostAddress:cleanText_(data.hostAddress,120),dataStatus:cleanText_(data.dataStatus,200),newEnrollment:cleanText_(data.newEnrollment,1000),issues:cleanText_(data.issues,1000),miscellaneous:cleanText_(data.miscellaneous,1000),nextMaterial:cleanText_(data.nextMaterial,1000),managerName:cleanText_(data.managerName,120)});
+    sheet.appendRow([reportId,e.id,e.name,now,branch,code,customer,contact,visit,product,address,json,engineerFile.getId(),managerFile?managerFile.getId():'',stampFile.getId(),pdfFile.getId(),pdfFile.getName(),lat,lon,accuracy]);
+    return {ok:true,reportId:reportId,fileName:pdfFile.getName(),pdfBase64:Utilities.base64Encode(pdfFile.getBlob().getBytes())};
+  } catch(err) { if(docFile)try{docFile.setTrashed(true)}catch(_){}; throw new Error('AMC report was not completed: '+err.message); }
+}
+function appGetMyAmcReports(token) { const e=employeeForSession_(token),sh=ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH);return amcRows_(sh).filter(r=>String(r['Employee ID'])===String(e.id)).slice(-30).reverse(); }
+function appManagerAmcReports(token) { const e=employeeForSession_(token);requireManager_(e);return amcRows_(ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH)).slice(-300).reverse(); }
+function appGetAmcPdf(token,reportId) { const e=employeeForSession_(token),rows=amcRows_(ensureTab_(spreadsheet_(),APP.AMC,APP.AMCH)),r=rows.find(x=>String(x['Report ID'])===String(reportId));if(!r)throw new Error('AMC report not found.');if(String(r['Employee ID'])!==String(e.id))requireManager_(e);const file=DriveApp.getFileById(String(r['PDF File ID']));return {fileName:file.getName(),pdfBase64:Utilities.base64Encode(file.getBlob().getBytes())}; }
+function amcRows_(sheet) { const v=sheet.getDataRange().getValues();if(v.length<2)return [];const h=v[0].map(String);return v.slice(1).filter(r=>r[0]).map(r=>{const o={};h.forEach((k,i)=>o[k]=r[i] instanceof Date?Utilities.formatDate(r[i],spreadsheet_().getSpreadsheetTimeZone(),'yyyy-MM-dd HH:mm:ss'):r[i]);return o;}); }
+function amcImageBlob_(data,name,required) { if(!data){if(required)throw new Error('Add the required signature and branch stamp photo.');return null;}const m=String(data).match(/^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/);if(!m)throw new Error('Signature and stamp must be PNG or JPEG images.');return Utilities.newBlob(Utilities.base64Decode(m[2]),m[1],name); }
+function amcFolder_() { const p=PropertiesService.getScriptProperties(),key='AMC_REPORT_FOLDER_ID',id=p.getProperty(key);if(id){try{return DriveApp.getFolderById(id)}catch(_){}}const f=DriveApp.createFolder('Rushabh Workday AMC Reports');p.setProperty(key,f.getId());return f; }
+function validOptionalCoordinate_(v,min,max) { if(v===''||v===null||v===undefined)return '';const n=Number(v);return Number.isFinite(n)&&n>=min&&n<=max?n:''; }
+
 function appManagerEmployees(token) {
   const viewer = employeeForSession_(token); requireManager_(viewer);
   return employees_(true).map(publicProfile_).sort((a,b)=>a.name.localeCompare(b.name));
@@ -104,6 +176,7 @@ function appManagerDashboard(token) {
   const viewer=employeeForSession_(token); requireManager_(viewer);
   const ss=spreadsheet_(), tz=ss.getSpreadsheetTimeZone(), today=Utilities.formatDate(new Date(),tz,'yyyy-MM-dd');
   const people=employees_().map(e=>{const attendance=rowsForEmployee_(ss,APP.ATTENDANCE,e.id,50).concat(legacyAttendance_(ss,e.id)).filter(r=>String(r['Work Date']).slice(0,10)===today);const progress=rowsForEmployee_(ss,APP.PROGRESS,e.id,50).concat(legacyProgress_(ss,e.id)).filter(r=>String(r['Work Date']).slice(0,10)===today);const checkIn=attendance.some(r=>r.Event==='CHECK_IN'),checkOut=attendance.some(r=>r.Event==='CHECK_OUT');return {id:e.id,name:e.name,role:e.role,attendance:checkOut?'Checked out':checkIn?'Checked in':'Not checked in',reported:progress.length>0,progress:progress[0]||null};});
+  people.forEach(p=>{const rows=rowsForEmployee_(ss,APP.ATTENDANCE,p.id,50).concat(legacyAttendance_(ss,p.id)).filter(r=>String(r['Work Date']).slice(0,10)===today);p.metrics=attendanceMetrics_(rows,PropertiesService.getScriptProperties())});
   return {date:today,people:people,summary:{team:people.length,checkedIn:people.filter(p=>p.attendance!=='Not checked in').length,reported:people.filter(p=>p.reported).length,blocked:people.filter(p=>p.progress&&/blocked/i.test(p.progress.Status||'')).length}};
 }
 function appManagerEmployeeDetail(token, employeeId, fromDate, toDate) {
@@ -138,7 +211,7 @@ function employees_(includeInactive) {
   return data.slice(1).filter(r=>r[m.id]&&r[m.name]).filter(r=>includeInactive||((m.active<0||!['inactive','no','false','left','terminated'].includes(String(r[m.active]).toLowerCase()))&&(m.start<0||!r[m.start]||sheetDate_(r[m.start],m.sh.getParent().getSpreadsheetTimeZone())<=today)&&(m.end<0||!r[m.end]||sheetDate_(r[m.end],m.sh.getParent().getSpreadsheetTimeZone())>=today))).map(r=>({id:String(r[m.id]).trim(),name:String(r[m.name]).trim(),mobile:m.mobile>=0&&r[m.mobile]?normalizeMobile_(r[m.mobile]):'',email:m.email>=0?String(r[m.email]||'').trim().toLowerCase():'',role:m.role<0?'':String(r[m.role]).trim()}));
 }
 function findEmployeeByEmail_(email) { const active=employees_(),matches=active.filter(e=>e.email===email); if(matches.length>1)throw new Error('This email is mapped to more than one active employee. Correct the Employees tab.'); if(matches.length)return matches[0]; if(managerEmails_().includes(email)){const managers=active.filter(isManager_);if(managers.length===1)return managers[0];if(managers.length>1)throw new Error('Manager Email is configured, but multiple manager rows exist. Add each manager email to Employees to remove ambiguity.');} return undefined; }
-function employeeForSession_(token) { if(!token || !/^[a-f0-9-]{60,80}$/i.test(String(token))) throw new Error('Session expired. Sign in again.'); const cache=CacheService.getScriptCache(),key='session_'+token,sh=appSessionSheet_(),hash=digest_(token),v=sh.getDataRange().getValues(),h=v[0].map(String),ix=h.indexOf('Token Hash'); let row=v.findIndex((r,i)=>i>0&&String(r[ix])===hash),email; if(row>0)email=String(v[row][h.indexOf('Email')]||''); else { email=cache.get(key); if(!email)throw new Error('Session expired. Sign in again.'); sh.appendRow([hash,email,new Date()]); row=sh.getLastRow()-1; } const lastValue=sh.getRange(row+1,h.indexOf('Last Activity')+1).getValue(),last=lastValue instanceof Date?lastValue.getTime():new Date(lastValue).getTime(); if(!last||Date.now()-last>=8*60*60*1000){if(row>0)sh.deleteRow(row+1);cache.remove(key);throw new Error('Session expired after 8 hours of inactivity. Sign in again.')} const e=findEmployeeByEmail_(email); if(!e){sh.deleteRow(row+1);cache.remove(key);throw new Error('Employee account is no longer active.')} sh.getRange(row+1,h.indexOf('Last Activity')+1).setValue(new Date()); cache.put(key,email,21600); return e; }
+function employeeForSession_(token) { if(!token || !/^[a-f0-9-]{60,80}$/i.test(String(token))) throw new Error('Session expired. Sign in again.'); const cache=CacheService.getScriptCache(),key='session_'+token,sh=appSessionSheet_(),hash=digest_(token),v=sh.getDataRange().getValues(),h=v[0].map(String),ix=h.indexOf('Token Hash'); let row=v.findIndex((r,i)=>i>0&&String(r[ix])===hash),email; if(row>0)email=String(v[row][h.indexOf('Email')]||''); else { email=cache.get(key); if(!email)throw new Error('Session expired. Sign in again.'); sh.appendRow([hash,email,new Date()]); row=sh.getLastRow()-1; } const e=findEmployeeByEmail_(email); if(!e){sh.deleteRow(row+1);cache.remove(key);throw new Error('Employee account is no longer active.')} sh.getRange(row+1,h.indexOf('Last Activity')+1).setValue(new Date()); cache.put(key,email,21600); return e; }
 const APP_SESSION_HEADERS_=['Token Hash','Email','Last Activity'];
 function appSessionSheet_(){const ss=spreadsheet_();let sh=ss.getSheetByName('App_Sessions');if(!sh){sh=ss.insertSheet('App_Sessions');sh.getRange(1,1,1,3).setValues([APP_SESSION_HEADERS_]);sh.setFrozenRows(1)}const h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(x=>String(x).trim());if(APP_SESSION_HEADERS_.some((x,i)=>h[i]!==x))throw new Error('App_Sessions has unexpected headers.');return sh}
 function recordAppSession_(token,email){const sh=appSessionSheet_(),lock=LockService.getScriptLock();lock.waitLock(10000);try{sh.appendRow([digest_(token),email,new Date()])}finally{lock.releaseLock()}CacheService.getScriptCache().put('session_'+token,email,21600)}
@@ -173,6 +246,11 @@ function requiredNumber_(v,label) { const n=Number(v); if(v===null||v===''||!Num
 function distanceMeters_(a,b,c,d) { const rad=x=>x*Math.PI/180, R=6371000, p1=rad(a),p2=rad(c),dp=rad(c-a),dl=rad(d-b),x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
 function validDate_(x) { const s=String(x||''); return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:''; }
 function sheetDate_(value,tz) { if(value instanceof Date)return Utilities.formatDate(value,tz,'yyyy-MM-dd'); const d=new Date(value); return isNaN(d.getTime())?'9999-12-31':Utilities.formatDate(d,tz,'yyyy-MM-dd'); }
+
+const APP_ACTIVITY_HEADERS_=['Timestamp','Email','Employee ID','Employee Name','Activity'];
+function auditActivity_(email,event){const address=normalizeEmail_(email),employee=findEmployeeByEmail_(address),ss=spreadsheet_();let sh=ss.getSheetByName('App_Activity_Log');if(!sh){sh=ss.insertSheet('App_Activity_Log');sh.getRange(1,1,1,APP_ACTIVITY_HEADERS_.length).setValues([APP_ACTIVITY_HEADERS_]);sh.setFrozenRows(1)}const actual=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(x=>String(x).trim());if(APP_ACTIVITY_HEADERS_.some((h,i)=>actual[i]!==h)||actual.length!==APP_ACTIVITY_HEADERS_.length)throw new Error('App_Activity_Log has unexpected headers; no changes were made.');const lock=LockService.getScriptLock();lock.waitLock(10000);try{sh.appendRow([new Date(),address,employee?employee.id:'',employee?employee.name:'',String(event||'').slice(0,80)])}finally{lock.releaseLock()}}
+function setupAppActivityLog(){const ss=spreadsheet_();let sh=ss.getSheetByName('App_Activity_Log');if(!sh){sh=ss.insertSheet('App_Activity_Log');sh.getRange(1,1,1,APP_ACTIVITY_HEADERS_.length).setValues([APP_ACTIVITY_HEADERS_]);sh.setFrozenRows(1)}return 'App_Activity_Log ready.'}
+function attendanceMetrics_(rows,props){const get=k=>String(props.getProperty(k)||'').trim(),cutoff=(get('CHECKOUT_END')||'23:59').split(':'),now=new Date(),endOfDay=new Date(now);endOfDay.setHours(Number(cutoff[0])||23,Number(cutoff[1])||59,59,999);const inside=(rows||[]).find(r=>r.Event==='CHECK_IN'),outside=(rows||[]).find(r=>r.Event==='CHECK_OUT');if(!inside&&!outside)return {status:now>=endOfDay?'Absent':'Awaiting check-in',hours:0,highlight:now>=endOfDay};if(!inside)return {status:'Check-in missing',hours:null,highlight:true};const parse=v=>{if(v instanceof Date)return v;let s=String(v||'').trim();if(/^\d{4}-\d\d-\d\d \d\d:\d\d/.test(s))s=s.replace(' ','T');return new Date(s)};const start=parse(inside['Server Timestamp']);if(isNaN(start.getTime()))return {status:'Review time record',hours:null,highlight:true};const finish=outside?parse(outside['Server Timestamp']):now;if(isNaN(finish.getTime())||finish<start)return {status:'Review time record',hours:null,highlight:true};const hours=Math.max(0,(finish-start)/3600000),rounded=Math.round(hours*100)/100;if(!outside)return {status:'Checkout pending',hours:rounded,highlight:true};const status=hours<4?'Absent':hours<8?'Half day':'Present';const end=(get('CHECKIN_END')||'11:00').split(':'),late=new Date(start);late.setHours(Number(end[0])||11,Number(end[1])||0,0,0);return {status:status,hours:rounded,late:start>late,highlight:status!=='Present'||start>late}}
 
 
 const SCHEDULE_TAB_='App_Schedule';

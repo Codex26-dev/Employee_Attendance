@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rushabh-workday-shell-v4';
+const CACHE_NAME = 'rushabh-workday-shell-v5';
 const APP_SHELL = [
   './', './connected.html', './connected.css', './index.html', './lite.html', './app.css', './app.js',
   './manifest.webmanifest', './assets/app-icon.svg'
