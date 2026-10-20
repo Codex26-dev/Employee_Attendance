@@ -4,12 +4,19 @@ This is a Google Apps Script HtmlService web app bound to the supplied workbook.
 
 ## Deploy
 
-1. The bound project is live at `https://script.google.com/macros/s/AKfycbycroZZeGiM-rll2ItTlryk2ZB7C2WMgze4mx7ZW5ccJDKnWofuI7fsDxhOMJIc54H6/exec`, deployed as Version 7 on Oct 17, 2026. It executes as the owner and requires a signed-in Google account. OTP is still limited to an active employee email. For a fresh setup, use a separate project and add `Code.gs`, `App.html`, `Styles.html`, and `Client.html` from this folder. Do not paste into the legacy candidate project.
+1. The bound project is live at `https://script.google.com/macros/s/AKfycbycroZZeGiM-rll2ItTlryk2ZB7C2WMgze4mx7ZW5ccJDKnWofuI7fsDxhOMJIc54H6/exec`. It executes as the owner and requires a signed-in Google account. OTP is limited to active employee emails. For a fresh setup, use a separate project and add `Code.gs`, `App.html`, `Styles.html`, and `Client.html` from this folder. Do not paste into the legacy candidate project.
 2. In Apps Script **Project Settings → Script properties**, add the values below. Keep provider keys here; never put them in HTML or a spreadsheet cell.
 3. The bound project timezone is India Standard Time (Kolkata). Check-in may use the configured check-in window. Check-out has no time-window restriction; it is recorded after the employee submits the daily report. GPS and geofence readings are optional/advisory. Set office coordinates if you want location status captured.
 4. Run `setupConnectedAppSheets` once from the editor and authorize the project. It creates `App_Attendance`, `App_Progress`, and `AMC_Reports` if absent. It does not clear existing tabs.
 5. The first AMC PDF save needs the project owner to authorize the added Google Drive and Google Docs scopes. The app creates its private Drive folder automatically. Employees can preview their own PDF in the app; managers can see the team AMC report list. The PDF contains the server timestamp, selected site/product/visit details, inspection checks, technician signature, optional customer signature, stamp photo, and optional GPS.
-5. For a fresh team deployment, use **Deploy → New deployment → Web app**, execute as the project owner, and require Google-account access. Do not choose anonymous `Anyone` access for a team workspace.
+6. For a fresh team deployment, use **Deploy → New deployment → Web app**, execute as the project owner, and require Google-account access. Do not choose anonymous `Anyone` access for a team workspace.
+
+## Where information is stored
+
+- Work records are saved in the connected Google Sheet, not just on the phone: `App_Attendance`, `App_Progress`, `App_Schedule`, `App_Tasks`, and `App_Requests`. First use creates the app-specific tabs without clearing existing data. Task completion location is stored in extra columns in `App_Tasks` when the employee allows GPS.
+- Sign-in, sign-out, and other audited events are appended to `App_Activity_Log`; active session token hashes are in `App_Sessions`. The browser keeps the session token locally so refresh does not sign the employee out, plus the last-open section. It does not locally store the team's work history.
+- Signed AMC PDFs and their embedded signature/stamp images are stored in the Apps Script owner's private Google Drive folder `Rushabh Workday AMC Reports`. AMC visit metadata is also saved in `AMC_Reports` in the connected Sheet.
+- The app reads employee roster/settings and can include matching older `GPS_Attendance` and `Report_Data` rows in manager history. Those existing tabs are not replaced. The installable PWA caches only its static app shell; it does not cache employee records or sync work offline.
 
 ## Try the interface now
 
