@@ -2,14 +2,14 @@
 
 ## Current PWA link
 
-Open the published HTTPS launcher at https://codex26-dev.github.io/Employee_Attendance/ in Chrome on Android or Safari on iPhone. It opens the Google Apps Script workspace. A Google account is required to reach sign-in. OTP is issued only for an email mapped to an active employee row (or configured manager email) in the connected Sheet.
+Open the published HTTPS launcher at https://codex26-dev.github.io/Employee_Attendance/ in Chrome on Android or Safari on iPhone. It opens the Google Apps Script workspace. Anyone with the link can reach the OTP screen. OTP is issued only for an email mapped to an active employee row (or configured manager email) in the connected Sheet; a Google sign-in is not required.
 
 Use the Google Apps Script web app URL or the PWA link. Sign in with your registered work email and the email OTP. Employees do not need access to the spreadsheet itself.
 
 ## Manager setup before inviting employees
 
 1. In the Google Sheet `Employees` tab, add staff emails in column F (`Email (optional, for reminders)`). Keep employee IDs; set manager Designation in column C to `Manager` or `Admin`.
-2. The connected web app executes as its owner and requires a Google account. The employee still needs an active email row to receive an OTP; spreadsheet access is not required.
+2. The connected web app executes as its owner behind email OTP. Link access is public; the employee needs an active email row to receive an OTP, but does not need spreadsheet access or a particular Google account.
 3. A manager can open **Team view → Attendance fence**, capture current-device GPS while at the office, review the pin, and save. Latitude, longitude, and radius can also be entered manually. Changes apply to the next punch.
 4. Test OTP, schedules, attendance, progress, and manager views with a registered account. GPS permission is requested only after tapping the fence GPS button or Check in/Check out.
 
@@ -19,7 +19,7 @@ Use the Google Apps Script web app URL or the PWA link. Sign in with your regist
 2. Sign in and confirm the app opens.
 3. Android Chrome: open the browser menu and choose **Install app** or **Add to Home screen**. Confirm the prompt. If no install option appears, reload the HTTPS site and use the browser menu's **Add to Home screen** option.
 4. iPhone Safari: tap **Share → Add to Home Screen → Add**.
-5. Launch the new home-screen icon. Sign-in requires internet. Attendance requires location permission and a usable GPS fix.
+5. Launch the new home-screen icon. Sign-in requires internet. GPS is optional for attendance; allow it only if the employee wants location captured.
 
 ## Schedule workflow
 

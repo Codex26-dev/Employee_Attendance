@@ -30,8 +30,17 @@
     </section>
     <footer><span>RUSHHABH WORKDAY</span><span>LIGHTWEIGHT · PRIVATE · SHEET CONNECTED</span></footer>
   </main>
+  <script src="./push-config.js"></script>
   <script>
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').then(async () => {
+      const cfg = window.RUSHHABH_PUSH_CONFIG;
+      if (!(cfg && cfg.firebase && cfg.firebase.projectId && 'Notification' in window && Notification.permission === 'granted')) return;
+      const load = src => new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s); });
+      await load('https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js');
+      await load('https://www.gstatic.com/firebasejs/13.0.0/firebase-messaging-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+      firebase.messaging().onMessage(payload => { const n = payload.notification || {}; if (Notification.permission === 'granted') new Notification(n.title || 'Rushabh Workday', { body: n.body || 'You have a new reminder.', icon: './assets/app-icon.svg' }); });
+    }).catch(() => {});
     const link = document.querySelector('.primary');
     link.addEventListener('click', event => { if (!navigator.onLine) { event.preventDefault(); document.getElementById('offline').hidden = false; } });
     let installEvent;
