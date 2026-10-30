@@ -20,16 +20,27 @@
       <a class="primary" href="https://script.google.com/macros/s/AKfycbycroZZeGiM-rll2ItTlryk2ZB7C2WMgze4mx7ZW5ccJDKnWofuI7fsDxhOMJIc54H6/exec" rel="noreferrer">Open connected workspace <span>↗</span></a>
       <div class="facts">
         <article><b>01</b><span>Sign in using your registered work email and its one-time code.</span></article>
-        <article><b>02</b><span>Attendance is checked against the configured time and office fence.</span></article>
-        <article><b>03</b><span>Managers can review team status and selected employee history.</span></article>
+        <article><b>02</b><span>After check-in, the employee sees their schedule. At any time, check-out opens the daily report and records the checkout when that report is saved.</span></article>
+        <article><b>03</b><span>GPS is optional. Employees can fill site AMC reports with signatures and a stamp photo, then preview and print the saved PDF.</span></article>
+        <article><b>04</b><span>The Day Buddy stays visible in every workspace section and answers from the signed-in employee’s own records.</span></article>
+        <article><b>05</b><span>Managers can review team status, employee history, and submitted AMC PDFs.</span></article>
       </div>
       <p id="offline" class="offline" role="status" hidden>You’re offline. Reconnect to open the Google Sheets workspace.</p>
-      <p class="access-note">A Google account is required to open sign-in. Only an active employee email in the roster receives an OTP. Internet is required for sign-in and Sheet sync.</p>
+      <p class="access-note">Anyone with this link can open sign-in. Only an active employee email approved by an admin receives an OTP. No Google sign-in is required. Internet is required for sign-in and Sheet sync.</p>
     </section>
     <footer><span>RUSHHABH WORKDAY</span><span>LIGHTWEIGHT · PRIVATE · SHEET CONNECTED</span></footer>
   </main>
+  <script src="./push-config.js"></script>
   <script>
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').then(async () => {
+      const cfg = window.RUSHHABH_PUSH_CONFIG;
+      if (!(cfg && cfg.firebase && cfg.firebase.projectId && 'Notification' in window && Notification.permission === 'granted')) return;
+      const load = src => new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s); });
+      await load('https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js');
+      await load('https://www.gstatic.com/firebasejs/13.0.0/firebase-messaging-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+      firebase.messaging().onMessage(payload => { const n = payload.notification || {}; if (Notification.permission === 'granted') new Notification(n.title || 'Rushabh Workday', { body: n.body || 'You have a new reminder.', icon: './assets/app-icon.svg' }); });
+    }).catch(() => {});
     const link = document.querySelector('.primary');
     link.addEventListener('click', event => { if (!navigator.onLine) { event.preventDefault(); document.getElementById('offline').hidden = false; } });
     let installEvent;
